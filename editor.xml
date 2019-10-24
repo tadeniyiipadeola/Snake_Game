@@ -1,0 +1,5 @@
+<application>
+  <component name="EditorSettings">
+    <option name="SOFT_WRAP_FILE_MASKS" value="*.md; *.txt; *.rst; *.adoc" />
+  </component>
+</application>
