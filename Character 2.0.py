@@ -2,7 +2,7 @@ import pygame
 pygame.init()
 
 # th is to setup the window on pygame
-win = pygame.display.set_mode((500,480))
+win = pygame.display.set_mode((852,480))
 pygame.display.set_caption("This is a character game")
 
 walkLeft = [pygame.image.load('L1.png'), pygame.image.load('L2.png'), pygame.image.load('L3.png'),
@@ -18,7 +18,7 @@ char = pygame.image.load('standing.png')
 clock = pygame.time.Clock()
 
 class player(object):
-    def __init__(self, x, y , width, height):
+    def __init__(self, x, y, width, height):
         self.x = x
         self.y = y
         self.width = width
@@ -29,6 +29,7 @@ class player(object):
         self.walkCount = 0
         self.jumpCount = 10
         self.standing = True
+        self.isJump = False
 
     def draw(self, win):
         if self.walkCount + 1 >= 27:
@@ -36,11 +37,11 @@ class player(object):
 
         if not self.standing:
             if self.left:
-                win.blit(walkLeft[self.walkCount // 10], (self.x, self.y))
+                win.blit(walkLeft[self.walkCount // 3], (self.x, self.y))
                 self.walkCount += 1
             elif self.right:
-                win.blits(walkRight[self.walkCount // 10], (self.x, self.y))
-                self.walkCount -= 1
+                win.blit(walkRight[self.walkCount // 3], (self.x, self.y))
+                self.walkCount += 1
 
         else:
             if self.right:
@@ -50,33 +51,52 @@ class player(object):
 
 
 class projectile (object):
-    def __init__(self,x,y,radius,color,facing):
+    def __init__(self, x, y, radius, color, facing):
         self.x = x
         self.y = y
+        self.radius = radius
         self. color = color
         self.facing = facing
         self.vel = 8 * facing
 
-    def draw(win):
-        pygam.draw.circle(win, self.color, (self.x,self.y), self.radius)
+    def draw(self, win):
+        pygame.draw.circle(win, self.color, (self.x,self.y), self.radius)
 
 def redrawgamewindow():
     win.blit(bg, (0, 0))
     man.draw(win)
+    for bullet in bullets:
+        bullet.draw(win)
+
     pygame.display.update()
 
 
 run = True  # main loop, This
-man = player(300, 410, 64, 64)
+bullets = []
+man = player(200, 420, 64, 64)
 while run:
     clock.tick(27)
-
-    pygame.time.delay(10)
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
             run = False
 
-    keys = pygame.key.get_pressed() # declare the variable keys and its function in the code
+    for bullet in bullets:
+        if bullet.x < 852 and bullet.x > 0:
+            bullet.x += bullet.vel
+        else:
+            bullets.pop(bullets.index(bullet))
+
+    keys = pygame.key.get_pressed()
+
+    # declare the variable keys and its function in the code
+    if keys[pygame.K_SPACE]:
+        if man.left:
+            facing = -1
+        else:
+            facing = 1
+        if len(bullets) < 5:
+            bullets.append(projectile(round(man.x + man.width // 2), round(man.y + man.height // 2), 6, (0, 0, 0), facing))
+
 
     if keys[pygame.K_LEFT] and man.x > man.vel:
         man.x -= man.vel
@@ -84,7 +104,7 @@ while run:
         man.right = False
         man.standing = False
 
-    elif keys[pygame.K_RIGHT] and man.x < 485 - man.vel - man.width:
+    elif keys[pygame.K_RIGHT] and man.x < 500 - man.vel - man.width:
         man.x += man.vel
         man.right = True
         man.left = False
@@ -94,8 +114,8 @@ while run:
         man.walkCount = 0
 
 # This line disables movement in the y direction while spacebar is active
-    if not man.isJump:
-        if keys[pygame.K_SPACE]:
+    if not (man.isJump):
+        if keys[pygame.K_UP]:
             man.isJump = True
             man.right = False
             man.left = False
@@ -112,4 +132,5 @@ while run:
             man.isJump = False
 
     redrawgamewindow()
+
 pygame.quit()
