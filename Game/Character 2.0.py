@@ -1,374 +1,426 @@
+import os
 import pygame
 
+# Game Setup
+# Initializes pygame
 pygame.init()
 
-# this to setup the window on pygame
-win = pygame.display.set_mode((1600, 1000))
+# The Desired screen width and height
+screenWidth = pygame.display.Info().current_w
+screenHeight = pygame.display.Info().current_h
 
+# Sets up the window to display the game
+win = pygame.display.set_mode((screenWidth, screenHeight), pygame.FULLSCREEN)
 pygame.display.set_caption("This is a character game")
-# this loads the background image
-bg = pygame.image.load('bg.jpg')
 
-bullet = pygame.image.load('B1.png')
-
-#  game clock
+# The clock of the game
 clock = pygame.time.Clock()
 
+# Gameplay Setup
+# How fast characters will fall
+gravity = 4
+
+# The control scheme for player 1
+p1Controls = [pygame.K_SPACE, pygame.K_UP, pygame.K_LEFT, pygame.K_RIGHT]  # (Space, Jump, Left, Right)
+
+# The control scheme for player 2
+p2Controls = [pygame.K_f, pygame.K_w, pygame.K_a, pygame.K_d]  # (Space, Jump, Left, Right)
+
+# Sprite Appearance Setupd
+# The variable used to scale sprites down to fit the screen
+spriteScale = 0.5
+
+# The color Red, for Enemies
+RED = (255, 0, 0)
+
+# The color Green, for Power Ups
+YELLOW = (255, 255, 0)
+
+# The color Green, for Platforms
+GREEN = (0, 255, 0)
+
+# The color Cyan, for the Projectiles
+CYAN = (0, 255, 255)
+
+# The color Blue, for Players
+BLUE = (0, 0, 255)
+
+# Image Setup
+# Loads the background's image into the window
+bg = pygame.transform.scale(pygame.image.load('sprites/bg.jpg').convert_alpha(), (screenWidth, screenHeight))
+
+# Loads the first player's bullet into the window
+p1Bullet = pygame.transform.scale(pygame.image.load('sprites/players/projectiles/p1Projectile.png').convert_alpha(),
+                                  (18, 12))
+
+# Loads the first player's bullet into the window
+p2Bullet = pygame.transform.scale(pygame.image.load('sprites/players/projectiles/p2Projectile.png').convert_alpha(),
+                                  (18, 12))
+
+# The optimal platform width and height
+platformWidth = round(127 * spriteScale)
+platformHeight = round(96 * spriteScale)
+
+# The list containing all platform sprites
+platformSprites = []
+
+# The optimal ground width and height
+groundWidth = round(128 * spriteScale)
+groundHeight = round(175 * spriteScale)
+
+# The list containing all of the ground's sprites
+groundSprites = []
+
+# The list containing all of the first player's sprites
+# First list is the right walking sprites, second list is the left walking sprites
+p1Sprites = [[], []]
+
+# The list containing all of the second player's sprites
+# First list is the right walking sprites, second list is the left walking sprites
+p2Sprites = [[], []]
+
+# Loads all of the images in the floating folder into the list
+for root, dirs, files in os.walk("sprites/platforms/floating", topdown=False):
+    # For each file in the list, put it at the end of the list
+    # Name contains the file path
+    for name in files:
+        platformSprites.append(pygame.transform.scale(pygame.image.load(os.path.join(root, name)).convert_alpha(),
+                                                      (platformWidth, platformHeight)))
+
+# Loads all of the images in the ground folder into the list
+for root, dirs, files in os.walk("sprites/platforms/ground", topdown=False):
+    # For each file in the list, put it at the end of the list
+    # Name contains the file path
+    for name in files:
+        groundSprites.append(pygame.transform.scale(pygame.image.load(os.path.join(root, name)).convert_alpha(),
+                                                    (groundWidth, groundHeight)))
+
+# Loads all of the images in the right folder into the first player's list
+for root, dirs, files in os.walk("sprites/players/p1/right", topdown=False):
+    # For each file in the list, put it at the end of the list
+    # Name contains the file path
+    for name in files:
+        p1Sprites[0].append(
+            pygame.transform.scale(pygame.image.load(os.path.join(root, name)).convert_alpha(), (30, 50)))
+
+# Loads all of the images in the left folder into the first player's list
+for root, dirs, files in os.walk("sprites/players/p1/left", topdown=False):
+    # For each file in the list, put it at the end of the list
+    # Name contains the file path
+    for name in files:
+        p1Sprites[1].append(
+            pygame.transform.scale(pygame.image.load(os.path.join(root, name)).convert_alpha(), (30, 50)))
+
+# Loads all of the images in the right folder into the second player's list
+for root, dirs, files in os.walk("sprites/players/p2/right", topdown=False):
+    # For each file in the list, put it at the end of the list
+    # Name contains the file path
+    for name in files:
+        p2Sprites[0].append(
+            pygame.transform.scale(pygame.image.load(os.path.join(root, name)).convert_alpha(), (30, 50)))
+
+# Loads all of the images in the left folder into the second player's list
+for root, dirs, files in os.walk("sprites/players/p2/left", topdown=False):
+    # For each file in the list, put it at the end of the list
+    # Name contains the file path
+    for name in files:
+        p2Sprites[1].append(
+            pygame.transform.scale(pygame.image.load(os.path.join(root, name)).convert_alpha(), (30, 50)))
+
+
+# Class Setup
+# The class all kinds of platforms use
+class Platform(object):
+    def __init__(self, x, y, width, height, sprites, length=0):
+        self.x = x  # The X position of the platform
+        self.y = y  # The Y position of the platform
+        self.width = width  # The width of one of the platform sprites
+        self.height = height  # The height of one of the platform sprites
+        self.length = length  # The length of the platform
+        self.sprites = [sprites[0], sprites[2]]  # The sprites the platform will use
+        self.hitBox = pygame.rect.Rect(self.x, self.y, self.width, self.height)  # The hitbox of the platform
+
+        # Inserts the middle part into the sprite list, determined by the length
+        for i in range(length):
+            self.sprites.insert(1, sprites[1])
+
+    # Draws the sprites of the platform into the game
+    def draw(self, game):
+
+        # Draws the hitbox according to the parameters
+        pygame.draw.rect(game, RED, self.hitBox, 2)
+
+        # Updates the hitbox based on the platfrom's position
+        self.hitBox = pygame.rect.Rect(self.x, self.y, self.width * (self.length + 2), self.height)
+
+        # Draws the platform's sprites onto the screen
+        for i, sprite in enumerate(self.sprites):
+            game.blit(sprite, (self.x + (i * self.width), self.y))
+
+
+# The class all players use
+class Player(pygame.sprite.Sprite):
+    def __init__(self, x, y, sprites, width, height, controls, pBullet, *groups):
+        super().__init__(*groups)
+
+        # The player's position and size properties
+        self.x = x  # The X position of the player
+        self.y = y  # The Y position of the player
+        self.width = width  # The width of the player's sprite
+        self.height = height  # The height of the player's sprite
+
+        # The player's movement properties
+        self.controls = controls
+        self.moveSpeed = 0  # The velocity of the player's horizontal movement
+        self.fallSpeed = 0  # The velocity of the player's vertical movement
+        self.vel = 6  # How fast the player can move
+        self.facing = 1  # Which direction the player is facing. 1 is right, -1 is left
+        self.walkCount = 0  # The current sprite the player is one
+        self.isJump = False  # Tracks whether or not the player is jumping
+
+        # The player's appearance properties
+        self.hitBox = pygame.rect.Rect(self.x, self.y, self.width + 5, self.height + 5)  # The hitbox of the player
+        self.sprites = sprites  # All of the player's sprites
+        self.frameRate = 3
+
+        # The player's shooting properties
+        self.bullet = pBullet
+        self.fireCount = 0  # How long each shot will take to come out
+        self.fireRate = 5
+
+    def checkKeys(self, controlScheme):
+
+        # If the Space bar is pressed and there's less than 50 bullets in the list, then create a new bullet
+        if controlScheme[self.controls[0]] and len(bullets) < 50:
+            self.fireCount += 1
+            if self.fireCount >= self.fireRate:
+                if self.facing > 0:
+                    bullets.append(
+                        Projectile(round(self.x + self.width // 2 + 5), round(self.y + self.height // 2 + 5),
+                                   self.bullet, self.facing))
+                if self.facing < 0:
+                    bullets.append(
+                        Projectile(round(self.x + self.width // 2 + 5), round(self.y + self.height // 2 + 5),
+                                   pygame.transform.flip(self.bullet, True, False), self.facing))
+                self.fireCount = 0
+
+        # If the up arrow key is pressed and the player is not jumping, let them jump and set the player's fall speed
+        if controlScheme[self.controls[1]] and not self.isJump and self.fallSpeed <= 4:
+            self.isJump = True
+            self.fallSpeed -= 50
+
+        # If the left arrow key is pressed and the player is within the screen, move him and change his direction
+        if controlScheme[self.controls[2]] and self.x > 0 + self.width // 2:
+            self.moveSpeed -= self.vel
+            self.facing = -1
+
+        # If the right arrow key is pressed and the player is within the screen, move him and change his direction
+        if controlScheme[self.controls[3]] and self.x < screenWidth - self.width * 1.5:
+            self.moveSpeed += self.vel
+            self.facing = 1
+
+    # Checks if the player's hitbox is within the other sprite's hitbox.
+    # Moves the player depending on where they are
+    def checkCollision(self, other):
+        # Checks if the player's hitbox is within the other hitbox
+        if self.hitBox.colliderect(other.hitBox):
+            # If the player is higher than the other hitbox and is falling, then stop them
+            # Y position increases as the window goes down
+            # // 2 is there to prevent it from interfering with other checks
+            if self.y <= other.hitBox.y and self.fallSpeed >= 0:
+                self.y = other.hitBox.y - self.height  # Sets the player's Y position to just above the platform
+                self.fallSpeed = 0  # Makes the player not fall any more
+                self.isJump = False  # Allows the player to jump again
+
+            # If the player is on the right side of the platform, then stop them
+            if self.x > other.hitBox.x + other.hitBox.width:
+                self.moveSpeed = 0  # Stops the player from moving any more into it
+                self.x = other.hitBox.x + other.hitBox.width  # Sets the player's X position to the right of the hitbox
+            # If the player passes the check above, and is on the left side of the platform, then stop them
+            elif self.x > other.hitBox.x + other.hitBox.width:
+                self.moveSpeed = 0  # Stops the player from moving any more into it
+                self.x = other.hitBox.x - self.width  # Sets the player's X position to the left of the hitbox
+    # Draws the player's sprites and updates their position
+    def draw(self, game):
+
+        self.fallSpeed += gravity  # Increases the player's falling speed according to gravity's value
+
+        # If the fall speed is lower than 1 or -1, then set it to 0
+        if -1 < self.fallSpeed < 1:
+            self.fallSpeed = 0  # Sets the fall speed to 0
+
+        # Otherwise, decrease it
+        else:
+            self.fallSpeed = self.fallSpeed * 0.95  # Shrinks the fall speed slightly
+
+        # If the fall speed is greater than 35, then set it to 35
+        # Creates a cap for the fall speed in order to prevent the player from going through platforms
+        if self.fallSpeed > 50:
+            self.fallSpeed = 50
+
+        # Updates the player's Y position based of the fall speed
+        self.y += self.fallSpeed
+
+        # If the movement speed is lower than 1 or -1, then set it to 0
+        if -1 < self.moveSpeed < 1:
+            self.moveSpeed = 0
+        # Otherwise, decrease it
+        else:
+            self.moveSpeed = self.moveSpeed * 0.6  # Shrinks the move speed in order to cap it
+
+        # Updates the player's X position based on the movement speed
+        self.x += self.moveSpeed
+
+        # Resets the walk count to 0 if it's greater than the amount of sprites times the frame rate
+        # Multiplied so it only changes every n frames, determined by the player's frame rate
+        if self.walkCount >= len(self.sprites * self.frameRate):
+            self.walkCount = 0
+
+        # Checks if the player is facing right
+        if self.facing == 1:
+            # Checks if the player is moving
+            if self.moveSpeed > 0:
+                # Replaces the current sprite with a sprite in the list
+                game.blit(self.sprites[0][self.walkCount // self.frameRate], (self.x, self.y))
+                self.walkCount += 1  # Increases the walk count
+
+            # Otherwise, set the player to the neutral sprite
+            else:
+                # Replaces the current sprite with a sprite in the list
+                game.blit(self.sprites[0][0], (self.x, self.y))
+
+        # If it passes the first check, then checks if the player is facing left
+        elif self.facing == -1:
+            # Checks if the player is moving
+            if self.moveSpeed < 0:
+                # Replaces the current sprite with a sprite in the list
+                game.blit(self.sprites[1][self.walkCount // self.frameRate], (self.x, self.y))
+                self.walkCount += 1  # Increases the walk count
+
+            # Otherwise, set the player to the neutral sprite
+            else:
+                # Replaces the current sprite with a sprite in the list
+                game.blit(self.sprites[1][0], (self.x, self.y))
+
+        # Draws the player's hitbox
+        pygame.draw.rect(game, BLUE, self.hitBox, 2)
+
+        # Updates the hitbox to match the player's position
+        self.hitBox = pygame.rect.Rect(self.x, self.y, self.width + 5, self.height + 5)
+
+
+# The class all projectiles use
+class Projectile(object):
+    def __init__(self, x, y, sprite, facing=1):
+        self.vel = 30 * facing  # The horizontal velocity of the projectile
+        self.x = x  # The X position of the projectile
+        self.y = y  # The Y position of the projectile
+        self.sprite = sprite  # The sprite the projectile is using
+        self.hitBox = pygame.rect.Rect(self.x, self.y, 16, 12)
+
+    # Draws the projectile's sprite
+    def draw(self, game):
+
+        # Draws the projectile's hitbox into the game
+        pygame.draw.rect(game, GREEN, self.hitBox, 2)
+        # Draws the projectile's sprite at it's position
+        game.blit(self.sprite, (self.x, self.y))
+        # Updates the hitbox's position based on the projectile
+        self.hitBox = pygame.rect.Rect(self.x, self.y, 16, 12)
+
+
+# Object Setups
+# The Platforms
+
+# Holds all of the platforms in the game
+Platforms = []
+
+# Holds the position and length of each platform
+platformPosition = [[50, 550, 0], [800, 550, 1], [50, 350, 3], [300, 200, 2],
+                    [400, 450, 2], [700, 150, 4], [950, 400, 3], [1200, 250, 1]]
+
+# The Ground
+ground = Platform(-20, screenHeight - 85, groundWidth, groundHeight, groundSprites, screenWidth // groundWidth)
+
+# Creates a list of platforms based on given coordinates and lengths
+for platform in platformPosition:
+    Platforms.append(Platform(platform[0], platform[1], platformWidth, platformHeight, platformSprites, platform[2]))
+Platforms.append(ground)
+
+bullets = []  # Contains all of the projectiles on the screen
+
+player1 = Player(50, 200, p1Sprites, 30, 50, p1Controls, p1Bullet)  # Creates the first player's character
+player2 = Player(100, 200, p2Sprites, 30, 50, p2Controls, p2Bullet)  # Creates the second player's character
+
+Players = [player1, player2]  # Contains all of the players in the game
+
+# A list of all the sprites in the game
 all_sprites = pygame.sprite.Group()
 
-RED = (255, 0, 0)
-#  bottom left platform
-PF1_1 = pygame.image.load('p0.png')
-PF1_2 = pygame.image.load('p1.png')
-#  right platform
-PF2_1 = pygame.image.load('p0.png')
-PF2_2 = pygame.image.load('p1.5.png')
-PF2_3 = pygame.image.load('p1.png')
-#  Big left platform
-PF3_1 = pygame.image.load('p0.png')
-PF3_2 = pygame.image.load('p1.5.png')
-PF3_3 = pygame.image.load('p1.5.png')
-PF3_4 = pygame.image.load('p1.5.png')
-PF3_5 = pygame.image.load('p1.png')
-# Top right platform
-PF4_1 = pygame.image.load('p0.png')
-PF4_2 = pygame.image.load('p1.5.png')
-PF4_3 = pygame.image.load('p1.5.png')
-PF4_4 = pygame.image.load('p1.png')
 
-class Platform(object):
-    def __init__(self, x, y, width, height):
-        self.x = x
-        self.y = y
-        self.width = width
-        self.height = height
-        self.hitBox = (self.x, self.y, width, height,)
+# Method Setup
+# Redraws the window with the background and sprites
+def redrawGameWindow():
+    # Draws the background onto the window
+    win.blit(bg, (0, 0))
 
-    def draw(self, win):
-        pygame.draw.rect(win, RED, self.hitBox, 2)
-        self.hitBox = (self.x, self.y, 127, 96)
+    # Draws every platform in the Platforms list
+    for p in Platforms:
+        p.draw(win)
 
+    # Draws every character in the Players list
+    for pl in Players:
+        pl.draw(win)
 
-class part1(Platform):
-    def __init__(self, x, y, width, height):
-        super().__init__(x, y, width, height)
-        self.x = x
-        self.y = y
-        self.hitBox = (self.x, self.y, 500, 180)
+    # Draws every projectile in the bullets list
+    for b in bullets:
+        b.draw(win)
 
-    def draw(self, win):
-        pygame.draw.rect(win, RED, self.hitBox, 2)
-
-
-class part2(Platform):
-    def __init__(self, x, y, width, height):
-        super().__init__(x, y, width, height)
-        self.x = x
-        self.y = y
-        self.hitBox = (self.x, self.y, width, height)
-
-    def draw(self, win):
-        pygame.draw.rect(win, RED, self.hitBox, 2)
-
-
-class part3(Platform):
-    def __init__(self, x, y, width, height):
-        super().__init__(x, y, width, height)
-        self.x = x
-        self.y = y
-        self.hitBox = (self.x, self.y, width, height)
-
-    def draw(self, win):
-        pygame.draw.rect(win, RED, self.hitBox, 2)
-
-
-class part4(Platform):
-    def __init__(self, x, y, width, height):
-        super().__init__(x, y, width, height)
-        self.x = x
-        self.y = y
-        self.hitBox = (self.x, self.y, width, height)
-
-    def draw(self, win):
-        pygame.draw.rect(win, RED, self.hitBox, 2)
-
-
-#  Instances
-Pl1_1 = Platform(50, 800, 1000, 200)
-pl1_2 = part1(177, 800, 1000, 200)
-
-Pl2_1 = Platform(800, 500, 200, 200)
-pl2_2 = part1(927, 500, 200, 200)
-pl2_3 = part2(1054, 500, 200, 200)
-
-pl3_1 = Platform(50, 245, 200, 200)
-pl3_2 = part1(177, 245, 200, 200)
-pl3_3 = part2(304, 245, 200, 200)
-pl3_4 = part3(431, 245, 200, 200)
-pl3_5 = part4(558, 245, 200, 200)
-
-pl4_1 = Platform(1050, 100, 200, 200)
-pl4_2 = part1(1177, 100, 200, 200)
-pl4_3 = part2(1304, 100, 200, 200)
-pl4_4 = part3(1431, 100, 200, 200)
-# This loads the images for the Player
-walkLeft = [pygame.image.load('L1.png'), pygame.image.load('L2.png'), pygame.image.load('L3.png'),
-            pygame.image.load('L4.png'), pygame.image.load('L5.png'), pygame.image.load('L6.png'),
-            pygame.image.load('L7.png'), pygame.image.load('L8.png'), pygame.image.load('L9.png')]
-walkRight = [pygame.image.load('R1.png'), pygame.image.load('R2.png'), pygame.image.load('R3.png'),
-             pygame.image.load('R4.png'), pygame.image.load('R5.png'), pygame.image.load('R6.png'),
-             pygame.image.load('R7.png'), pygame.image.load('R8.png'), pygame.image.load('R9.png')]
-char = pygame.image.load('standing.png')
-
-
-#  class created for player one
-class Player(pygame.sprite.Sprite):
-    def __init__(self, x, y, width, height):
-        pygame.sprite.Sprite.__init__(self, )
-        self.x = x
-        self.y = y
-        self.width = width
-        self.height = height
-        self.vel = 8
-        self.left = False
-        self.right = False
-        self.walkCount = 0  # count sprite and what image were on
-        self.jumpCount = 10
-        self.standing = True
-        self.isJump = False
-        self.hitBox = (self.x + 17, self.y + 2, 31, 57)
-
-    # use the images above to draw the character sprite
-    def draw(self, win):
-        if self.walkCount + 1 >= 28:
-            self.walkCount = 0
-
-        if not self.standing:
-            if self.left:
-                win.blit(walkLeft[self.walkCount // 3], (self.x, self.y))
-                self.walkCount += 1
-            elif self.right:
-                win.blit(walkRight[self.walkCount // 3], (self.x, self.y))
-                self.walkCount += 1
-
-        else:
-            if self.right:
-                win.blit(walkRight[0], (self.x, self.y))
-            else:
-                win.blit(walkLeft[0], (self.x, self.y))
-        pygame.draw.rect(win, [255, 0, 0], self.hitBox, 2)
-        self.hitBox = (self.x + 17, self.y + 14, 31, 50)
-
-
-# this class is for the projectile that damages the other player
-class ProJectile(object):
-    def __init__(self, x, y, radius, color, facing):
-        self.x = x
-        self.y = y
-        self.radius = radius
-        self.color = color
-        self.facing = facing
-        self.vel = 15 * facing
-
-    # this instance method draw as the projectile as a  circlar dot
-    def draw(self, win):
-        pygame.draw.circle(win, self.color, (self.x, self.y), self.radius)
-
-
-# Sprite Load for Player2
-player2_WL = [pygame.image.load('0.png'), pygame.image.load('1.png'), pygame.image.load('2.png'),
-              pygame.image.load('3.png'), pygame.image.load('4.png'), pygame.image.load('5.png'),
-              pygame.image.load('6.png'), pygame.image.load('7.png'), pygame.image.load('8.png')]
-player2_WR = [pygame.image.load('9.png'), pygame.image.load('10.png'), pygame.image.load('11.png'),
-              pygame.image.load('12.png'), pygame.image.load('13.png'), pygame.image.load('14.png'),
-              pygame.image.load('15.png'), pygame.image.load('16.png'), pygame.image.load('17.png')]
-player2_char = pygame.image.load('44.png')
-
-
-# Class created for the first object which is player 2
-class Player2(object):
-    def __init__(self, x, y, width, height):
-        self.x = x
-        self.y = y
-        self.width = width
-        self.height = height
-        self.vel = 8
-        self.left = False
-        self.right = False
-        self.walkCount = 0
-        self.jumpCount = 10
-        self.standing = True
-        self.isJump = False
-        self.hitBox = (self.x + 17, self.y + 2, 31, 57,)
-
-    def draw(self, win):  # never draw in mainloop
-
-        if self.walkCount + 1 >= 10:
-            self.walkCount = 0
-
-        if not self.standing:
-            if self.left:
-                win.blit(player2_WL[self.walkCount // 3], (self.x, self.y))
-                self.walkCount += 1
-            elif self.right:
-                win.blit(player2_WR[self.walkCount // 3], (self.x, self.y))
-                self.walkCount += 1
-
-        else:
-            if self.right:
-                win.blit(player2_WR[0], (self.x, self.y))
-            else:
-                win.blit(player2_WL[0], (self.x, self.y))
-        self.hitBox = (self.x + 0, self.y + 0, 31, 57)
-        pygame.draw.rect(win, [255, 0, 0], self.hitBox, 2)
-
-
-# This line redraws the window with the BG and sprites on the BG
-def redrawgamewindow():
-    win.blit(bg, (0, 0))  # to put pic as the background use win.blit(image var(tuple position)
-    #  draws the rect of platform on window
-    rect_Lvl1_1.draw(win)
-    rect_Lvl1_2.draw(win)
-
-    rect_Lvl2_1.draw(win)
-    rect_Lvl2_2.draw(win)
-    rect_Lvl2_3.draw(win)
-
-    rect_Lvl3_1.draw(win)
-    rect_Lvl3_2.draw(win)
-    rect_Lvl3_3.draw(win)
-    rect_Lvl3_4.draw(win)
-    rect_Lvl3_5.draw(win)
-
-    rect_Lvl4_1.draw(win)
-    rect_Lvl4_2.draw(win)
-    rect_Lvl4_3.draw(win)
-    rect_Lvl4_4.draw(win)
-
-    man.draw(win)
-    man2.draw(win)
-    #  draw the image of a Platform at a given location
-    win.blit(PF1_1, (Pl1_1.x, Pl1_1.y))
-    win.blit(PF1_2, (pl1_2.x, pl1_2.y))
-    #  draws the image for the Platform at given location
-    win.blit(PF2_1, (Pl2_1.x, Pl2_1.y))
-    win.blit(PF2_2, (pl2_2.x, pl2_2.y))
-    win.blit(PF2_3, (pl2_3.x, pl2_3.y))
-    # draw the image of a platform at given location
-    win.blit(PF3_1, (pl3_1.x, pl3_1.y))
-    win.blit(PF3_2, (pl3_2.x, pl3_2.y))
-    win.blit(PF3_3, (pl3_3.x, pl3_3.y))
-    win.blit(PF3_4, (pl3_4.x, pl3_4.y))
-    win.blit(PF3_5, (pl3_5.x, pl3_5.y))
-
-    win.blit(PF4_1, (pl4_1.x, pl4_1.y))
-    win.blit(PF4_2, (pl4_2.x, pl4_2.y))
-    win.blit(PF4_3, (pl4_3.x, pl4_3.y))
-    win.blit(PF4_4, (pl4_4.x, pl4_4.y))
-
-
-    for bullet in bullets:
-        bullet.draw(win)
-
+    # Updates the screen with all of the sprites
     pygame.display.update()
 
 
-#  instances
-run = True
-bullets = []
-rect_Lvl1_1 = Platform(50, 800, 200, 200)
-rect_Lvl1_2 = Platform(177, 800, 200, 200)
+# The Game Loop
+run = True  # Tracks whether or not the game is running
 
-rect_Lvl2_1 = Platform(800, 500, 200, 200)
-rect_Lvl2_2 = Platform(927, 500, 200, 200)
-rect_Lvl2_3 = Platform(1054, 500, 200, 200)
-
-rect_Lvl3_1 = Platform(50, 245, 200, 200)
-rect_Lvl3_2 = Platform(177, 245, 200, 200)
-rect_Lvl3_3 = Platform(304, 245, 200, 200)
-rect_Lvl3_4 = Platform(431, 245, 200, 200)
-rect_Lvl3_5 = Platform(558, 245, 200, 200)
-
-rect_Lvl4_1 = Platform(1050, 100, 200, 200)
-rect_Lvl4_2 = Platform(1177, 100, 200, 200)
-rect_Lvl4_3 = Platform(1304, 100, 200, 200)
-rect_Lvl4_4 = Platform(1431, 100, 200, 200)
-
-man = Player(200, 887, 64, 64)  # (x, y, width,height)
-man2 = Player2(800, 900, 45, 55)  # (x, y, width,height)
-
-# main loop, This
+# The loop that runs the game
 while run:
-    clock.tick(27)  # FPS keeps the loop running at the right speed
-    for event in pygame.event.get():  # This to stop the game while you close window
+
+    # Redraws the game window
+    redrawGameWindow()
+
+    clock.tick(30)  # FPS keeps the loop running at the right speed
+
+    keys = pygame.key.get_pressed()  # Keeps track of any and all keys that have been pressed
+
+    # Allows each player to check if any of their keys are being pressed
+    for player in Players:
+        player.checkKeys(keys)
+
+    # Keeps track of every event that occurs in the game
+    for event in pygame.event.get():
+        # If the loop receives a quit event, then set run to false, ending the game
         if event.type == pygame.QUIT:
             run = False
 
+    # Acts on each projectile in the bullets list
     for bullet in bullets:
-        if bullet.x < 1600 and bullet.x > 0:
-            # if 852 > bullet.x > 0:
+        # If the projectile is in the screen, then move it
+        if 0 < bullet.x < screenWidth:
             bullet.x += bullet.vel
+
+        # Otherwise, erase it from the game
         else:
             bullets.pop(bullets.index(bullet))
 
-    keys2 = pygame.key.get_pressed()
-    if keys2[pygame.K_a] and man2.x > man.vel:
-        man2.x -= man2.vel
-        man2.left = True
-        man2.right = False
-        man2.standing = False
-    elif keys2[pygame.K_d] and man2.x < 1600 - man.vel - man.width:
-        man2.x += man.vel
-        man2.right = True
-        man2.left = False
-        man2.standing = False
-    else:
-        man2.standing = True
-    # Logic For baldy
-    keys = pygame.key.get_pressed()
-    # declare the variable keys and its function in the code
-    if keys[pygame.K_SPACE]:
-        if man.left:
-            facing = -1
-        else:
-            facing = 1
-        if len(bullets) < 50:
-            bullets.append(
-                ProJectile(round(man.x + man.width // 2), round(man.y + man.height // 2), 6, (0, 0, 0), facing))
+    # Acts on each platform in the Platforms list
+    for platform in Platforms:
+        # Checks the collision for each player
+        for player in Players:
+            player.checkCollision(platform)
 
-    if keys[pygame.K_LEFT] and man.x > man.vel:
-        man.x -= man.vel
-        man.left = True
-        man.right = False
-        man.standing = False
-
-    elif keys[pygame.K_RIGHT] and man.x < 1600 - man.vel - man.width:
-        man.x += man.vel
-        man.right = True
-        man.left = False
-        man.standing = False
-    else:
-        man.standing = True
-        man.walkCount = 0
-
-    # This line disables movement in the y direction while spacebar is active
-    if not man.isJump:
-        if keys[pygame.K_UP]:
-            man.isJump = True
-            man.right = False
-            man.left = False
-            man.walkCount = 0
-    else:
-        if man.jumpCount >= -10:
-            neg = 1
-            if man.jumpCount < 0:
-                neg = -1
-            man.y -= (man.jumpCount ** 2) * 0.5 * neg
-            man.jumpCount -= 1
-        else:
-            man.jumpCount = 10
-            man.isJump = False
-
-    redrawgamewindow()
+    # If the Z key is pressed, quit the game
+    if keys[pygame.K_z]:
+        pygame.quit()
 
 pygame.quit()
