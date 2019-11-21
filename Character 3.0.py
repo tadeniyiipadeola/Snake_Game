@@ -5,9 +5,14 @@ import pygame
 # Initializes pygame
 pygame.init()
 
+# The Original screen width and height
+originalWidth, originalHeight = 1366, 768
+
 # The Desired screen width and height
-screenWidth = pygame.display.Info().current_w
-screenHeight = pygame.display.Info().current_h
+screenWidth, screenHeight = pygame.display.Info().current_w, pygame.display.Info().current_h
+
+# The Scales for the X and Y positions
+scaleX, scaleY = screenWidth / originalWidth, screenHeight / originalHeight
 
 # Sets up the window to display the game
 win = pygame.display.set_mode((screenWidth, screenHeight), pygame.FULLSCREEN)
@@ -33,16 +38,13 @@ p2Controls = [pygame.K_f, pygame.K_w, pygame.K_a, pygame.K_d]  # (Space, Jump, L
 spriteScale = 0.5
 
 # The optimal width and height of the player sprites
-playerWidth = 30
-playerHeight = 50
+playerWidth, playerHeight = round(30 * scaleX), round(50 * scaleY)
 
 # The optimal width and height of the bullet sprites
-bulletWidth = 18
-bulletHeight = 12
+bulletWidth, bulletHeight = round(18 * scaleX), round(12 * scaleY)
 
 # The optimal width and height of the projectile sprites
-goblinWidth = 35
-goblinHeight = 55
+goblinWidth, goblinHeight = round(35 * scaleX), round(55 * scaleY)
 
 # The color Red, for Enemies
 RED = (255, 0, 0)
@@ -64,23 +66,23 @@ BLUE = (0, 0, 255)
 bg = pygame.transform.scale(pygame.image.load('assets/sprites/bg.jpg').convert_alpha(), (screenWidth, screenHeight))
 
 # Loads the first player's bullet into the window
-p1Bullet = pygame.transform.scale(pygame.image.load('assets/sprites/players/projectiles/p1Projectile.png').convert_alpha(),
-                                  (bulletWidth, bulletHeight))
+p1Bullet = pygame.transform.scale(
+    pygame.image.load('assets/sprites/players/projectiles/p1Projectile.png').convert_alpha(),
+    (bulletWidth, bulletHeight))
 
 # Loads the first player's bullet into the window
-p2Bullet = pygame.transform.scale(pygame.image.load('assets/sprites/players/projectiles/p2Projectile.png').convert_alpha(),
-                                  (bulletWidth, bulletHeight))
+p2Bullet = pygame.transform.scale(
+    pygame.image.load('assets/sprites/players/projectiles/p2Projectile.png').convert_alpha(),
+    (bulletWidth, bulletHeight))
 
 # The optimal platform width and height
-platformWidth = round(127 * spriteScale)
-platformHeight = round(96 * spriteScale)
+platformWidth, platformHeight = round(127 * spriteScale * scaleX), round(96 * spriteScale * scaleY)
 
 # The list containing all platform sprites
 platformSprites = []
 
 # The optimal ground width and height
-groundWidth = round(128 * spriteScale)
-groundHeight = round(175 * spriteScale)
+groundWidth, groundHeight = round(128 * spriteScale * scaleX), round(175 * spriteScale * scaleY)
 
 # The list containing all of the ground's sprites
 groundSprites = []
@@ -143,8 +145,8 @@ for root, dirs, files in os.walk("assets/sprites/enemies/goblin", topdown=False)
 # The class all kinds of platforms use
 class Platform(object):
     def __init__(self, x, y, width, height, sprites, length=0):
-        self.x = x  # The X position of the platform
-        self.y = y  # The Y position of the platform
+        self.x = round(x * scaleX)  # The X position of the platform
+        self.y = round(y * scaleY)  # The Y position of the platform
         self.width = width  # The width of one of the platform sprites
         self.height = height  # The height of one of the platform sprites
         self.length = length  # The length of the platform
@@ -176,17 +178,17 @@ class Character(pygame.sprite.Sprite):
         super().__init__(*groups)
 
         # The character's position and size properties
-        self.x = x  # The X position of the character
-        self.y = y  # The Y position of the character
+        self.x = round(x * scaleX)  # The X position of the character
+        self.y = round(y * scaleY)  # The Y position of the character
         self.width = width  # The width of the character's sprite
         self.height = height  # The height of the character's sprite
 
         # The character's movement properties
-        self.gravity = 4  # How fast the characters will fall
+        self.gravity = round(4 * scaleY)  # How fast the characters will fall
         self.moveSpeed = 0  # The velocity of the character's horizontal movement
         self.fallSpeed = 0  # The velocity of the character's vertical movement
         self.isJump = False  # Determines if the character is able to jump
-        self.vel = vel  # How fast the character can move
+        self.vel = round(vel * scaleX)  # How fast the character can move
         self.facing = 1  # Which direction the character is facing. 1 is right, -1 is left
 
         # The character's appearance properties
@@ -300,7 +302,7 @@ class Player(Character):
         # The player's shooting properties
         self.bullet = pBullet  # Which bullet sprite the player is using
         self.fireCount = 0  # How long each shot will take to come out
-        self.fireRate = 5  # How often the player can shoot
+        self.fireRate = 15  # How often the player can shoot
 
     def checkKeys(self, controlScheme):
 
@@ -325,7 +327,7 @@ class Player(Character):
         # If the up arrow key is pressed and the player is not jumping, let them jump and set the player's fall speed
         if controlScheme[self.controls[1]] and not self.isJump and self.fallSpeed <= 4:
             self.isJump = True
-            self.fallSpeed -= 50
+            self.fallSpeed -= 50 * scaleY
 
         # If the left arrow key is pressed and the player is within the screen, move him and change his direction
         if controlScheme[self.controls[2]] and self.x > 0 + self.width // 2:
@@ -360,7 +362,7 @@ class Enemy(Character):
 # The class all projectiles use
 class Projectile(object):
     def __init__(self, x, y, sprite, width, height, facing=1):
-        self.vel = 30 * facing  # The horizontal velocity of the projectile
+        self.vel = round(30 * facing * scaleX)  # The horizontal velocity of the projectile
         self.x = x  # The X position of the projectile
         self.y = y  # The Y position of the projectile
         self.width = width  # The width of the projectile
@@ -389,7 +391,7 @@ platformPosition = [[50, 550, 0], [800, 550, 1], [50, 350, 3], [300, 200, 2],
                     [400, 450, 2], [700, 150, 4], [950, 400, 3], [1200, 250, 1]]
 
 # The Ground
-ground = Platform(-20, screenHeight - 85, groundWidth, groundHeight, groundSprites, screenWidth // groundWidth)
+ground = Platform(-20, 680, groundWidth, groundHeight, groundSprites, screenWidth // groundWidth)
 
 # Creates a list of platforms based on given coordinates and lengths
 for platform in platformPosition:
@@ -442,7 +444,6 @@ run = True  # Tracks whether or not the game is running
 
 # The loop that runs the game
 while run:
-
 
     # Redraws the game window
     redrawGameWindow()
