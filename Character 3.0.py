@@ -1,3 +1,5 @@
+import math
+import random
 import os
 import pygame
 
@@ -7,6 +9,8 @@ pygame.init()
 
 # The Original screen width and height
 originalWidth, originalHeight = 1366, 768
+
+framesPerSecond = 30
 
 # The Desired screen width and height
 screenWidth, screenHeight = pygame.display.Info().current_w, pygame.display.Info().current_h
@@ -84,6 +88,9 @@ platformSprites = []
 # The optimal ground width and height
 groundWidth, groundHeight = round(128 * spriteScale * scaleX), round(175 * spriteScale * scaleY)
 
+# The optimal width and height for the slime sprites
+slimeWidth, slimeHeight = round(64 * spriteScale * scaleX), round(64 * spriteScale * scaleY)
+
 # The list containing all of the ground's sprites
 groundSprites = []
 
@@ -96,6 +103,8 @@ p1Sprites = []
 p2Sprites = []
 
 goblinSprites = []
+
+slimeSprites = []
 
 # Loads all of the floating platform sprites in the floating folder into the platforms list
 for root, dirs, files in os.walk("assets/sprites/platforms/floating", topdown=False):
@@ -139,6 +148,15 @@ for root, dirs, files in os.walk("assets/sprites/enemies/goblin", topdown=False)
         goblinSprites.append(
             pygame.transform.scale(pygame.image.load(os.path.join(root, name)).convert_alpha(),
                                    (goblinWidth, goblinHeight)))
+
+# Loads all of the goblin's in the goblin folder into the goblin's sprite list
+for root, dirs, files in os.walk("assets/sprites/enemies/slimes/red", topdown=False):
+    # For each file in the list, put it at the end of the list
+    # Name contains the file path
+    for name in files:
+        slimeSprites.append(
+            pygame.transform.scale(pygame.image.load(os.path.join(root, name)).convert_alpha(),
+                                   (slimeWidth, slimeHeight)))
 
 
 # Class Setup
@@ -347,7 +365,7 @@ class Enemy(Character):
 
     def draw(self, game):
         # If the enemy reaches the edge of the screen, flip it
-        if self.x < 0 + self.width // 2 or self.x > screenWidth - self.width * 1.5:
+        if self.hitBox.x < 0 or self.hitBox.x > screenWidth:
             self.x -= self.width * self.facing // 2.5
             self.vel = -self.vel
             self.facing = -self.facing
@@ -357,6 +375,21 @@ class Enemy(Character):
 
         # Continues the normal Character draw method
         super().draw(game)
+
+
+class Slime(Enemy):
+
+    def spawn(self, players):
+        nearestPlayer = players[0]
+
+        for p in players:
+            if math.hypot(self.hitBox.x - nearestPlayer.hitBox.x, self.hitBox.y - p.hitBox.y) < math.hypot(self.hitBox.x - nearestPlayer.hitBox.x, self.hitBox.y - nearestPlayer.hitBox.y):
+                nearestPlayer = p
+
+        if nearestPlayer.hitBox.x < self.hitBox.x:
+            self.vel *= -1
+        #self.moveSpeed = nearestPlayer.hitBox.x - self.hitBox.x
+        #self.fallSpeed = nearestPlayer.hitBox.y - self.hitBox.y
 
 
 # The class all projectiles use
@@ -408,7 +441,9 @@ Players = [player1, player2]  # Contains all of the players in the game
 
 goblin = Enemy(50, 200, goblinSprites, goblinWidth, goblinHeight, 4, 3)  # Creates a goblin
 
-Enemies = [goblin]  # Contains all of the enemies in the game
+slime = Slime(100, 200, slimeSprites, slimeWidth, slimeHeight, 4, 3)
+
+Enemies = [goblin, slime]  # Contains all of the enemies in the game
 # A list of all the sprites in the game
 all_sprites = pygame.sprite.Group()
 
@@ -442,13 +477,25 @@ def redrawGameWindow():
 # The Game Loop
 run = True  # Tracks whether or not the game is running
 
+slimeSpawnCount = 0
+slimeSpawnTime = framesPerSecond * 3
+
 # The loop that runs the game
 while run:
+
+    if slimeSpawnCount != slimeSpawnTime:
+        slimeSpawnCount += 1
+
+    if slimeSpawnCount == slimeSpawnTime:
+        Enemies.append(Slime(random.randint(0, screenWidth), 0, slimeSprites, slimeWidth, slimeHeight, 4, 3))
+        Enemies[len(Enemies) - 1].spawn(Players)
+        slimeSpawnCount = 0
+
 
     # Redraws the game window
     redrawGameWindow()
 
-    clock.tick(30)  # FPS keeps the loop running at the right speed
+    clock.tick(framesPerSecond)  # FPS keeps the loop running at the right speed
 
     keys = pygame.key.get_pressed()  # Keeps track of any and all keys that have been pressed
 
@@ -480,6 +527,7 @@ while run:
         # Checks the collision for each enemy
         for enemy in Enemies:
             enemy.checkCollision(platform)
+
 
     # If the Z key is pressed, quit the game
     if keys[pygame.K_z]:
