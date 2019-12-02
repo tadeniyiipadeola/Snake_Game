@@ -2,6 +2,9 @@
 This is the repository for the Snake Game project for the Lone star Engineering Club 
 
 # Change Log
+  ## 12/2/19
+  * Added Slimes (In Progress)
+  * Added FPS variable to track time
   ## 11/21/19
   * Fixed the sprite image/position scaling issue (For real this time)
   * Increased the bullet's cooldown to 15 frames (half a second) per request of someone else
