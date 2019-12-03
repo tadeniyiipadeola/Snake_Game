@@ -17,7 +17,7 @@ screenWidth, screenHeight = pygame.display.Info().current_w, pygame.display.Info
 scaleX, scaleY = screenWidth / originalWidth, screenHeight / originalHeight
 
 # Sets up the window to display the game
-win = pygame.display.set_mode((screenWidth, screenHeight), pygame.FULLSCREEN)
+win = pygame.display.set_mode((screenWidth, screenHeight))
 pygame.display.set_caption("This is a character game")
 
 # The clock of the game
@@ -218,9 +218,9 @@ class Character(pygame.sprite.Sprite):
 
     # Checks if the player's hitbox is within the other sprite's hitbox.
     # Moves the player depending on where they are
-    def checkCollision(self, other):
+    def checkCollision(self, other, list):
         # Checks if the player's hitbox is within the other hitbox
-        if self.hitBox.colliderect(other.hitBox):
+        if self.hitBox.colliderect(other.hitBox) and other.color == GREEN:
             # If the player is higher than the other hitbox and is falling, then stop them
             # Y position increases as the window goes down
             # // 2 is there to prevent it from interfering with other checks
@@ -238,6 +238,8 @@ class Character(pygame.sprite.Sprite):
                 self.moveSpeed = 0  # Stops the player from moving any more into it
                 self.x = other.hitBox.x - self.width  # Sets the player's X position to the left of the hitbox
 
+        if self.hitBox.colliderect(other.hitBox) and other.color == CYAN:
+            self
     # Draws the player's sprites and updates their position
     def draw(self, game):
 
@@ -320,6 +322,8 @@ class Player(Character):
         self.bullet = pBullet  # Which bullet sprite the player is using
         self.fireCount = 0  # How long each shot will take to come out
         self.fireRate = framesPerSecond * 0.5  # How often the player can shoot
+        self.bulletSound = pygame.mixer.Sound("assets/sounds/shoot.wav")
+        self.bulletSound.set_volume(0.25)
 
     def checkKeys(self, controlScheme):
 
@@ -329,6 +333,7 @@ class Player(Character):
             self.fireCount += 1
         # If the Space bar is pressed and there's less than 50 bullets in the list, then create a new bullet
         if controlScheme[self.controls[0]] and len(bullets) < 50 and self.fireCount == self.fireRate:
+            self.bulletSound.play()
             # If the player is facing right, then fire the normal bullet
             if self.facing > 0:
                 bullets.append(
@@ -362,6 +367,11 @@ class Enemy(Character):
     def __init__(self, x, y, sprites, width, height, vel, frameRate, *groups):
         super().__init__(x, y, sprites, width, height, vel, RED, frameRate, *groups)
 
+    # Checks if the player's hitbox is within the other sprite's hitbox.
+    # Moves the player depending on where they are
+    def checkCollision(self, other, list):
+        super().checkCollision(other, list)
+
     def draw(self, game):
         # If the enemy reaches the edge of the screen, flip it
         if self.hitBox.x < 0 or self.hitBox.x > screenWidth:
@@ -377,6 +387,12 @@ class Enemy(Character):
 
 
 class Slime(Enemy):
+    def __init__(self, x, y, sprites, width, height, vel, frameRate, *groups):
+        super().__init__(x, y, sprites, width, height, vel, frameRate, *groups)
+        self.walkSound = pygame.mixer.Sound("assets/sounds/slimeWalk.wav")
+        self.walkSound.set_volume(0.25)
+        self.walkSound.play(-1)
+        self.walkSound.fadeout(500)
 
     def spawn(self, players):
         nearestPlayer = players[0]
@@ -402,6 +418,7 @@ class Projectile(object):
         self.height = height  # The height of the projectile
         self.sprite = sprite  # The sprite the projectile is using
         self.hitBox = pygame.rect.Rect(self.x, self.y, self.width, self.height)
+        self.color = CYAN
 
     # Draws the projectile's sprite
     def draw(self, game):
@@ -441,7 +458,7 @@ Players = [player1, player2]  # Contains all of the players in the game
 
 goblin = Enemy(50, 200, goblinSprites, goblinWidth, goblinHeight, 4, 3)  # Creates a goblin
 
-slime = Slime(100, 200, slimeSprites, slimeWidth, slimeHeight, 4, 3)
+slime = Slime(100, 200, slimeSprites, slimeWidth, slimeHeight, 2, 6)
 
 Enemies = [goblin, slime]  # Contains all of the enemies in the game
 # A list of all the sprites in the game
@@ -487,8 +504,8 @@ while run:
         slimeSpawnCount += 1
 
     if slimeSpawnCount == slimeSpawnTime:
-        Enemies.append(Slime(random.randint(0, screenWidth), 0, slimeSprites, slimeWidth, slimeHeight, 4, 3))
-        Enemies[len(Enemies) - 1].spawn(Players)
+        Enemies.append(Slime(random.randint(0, screenWidth), 0, slimeSprites, slimeWidth, slimeHeight, 2, 3))
+        # Enemies[len(Enemies) - 1].spawn(Players)
         slimeSpawnCount = 0
 
     # Redraws the game window
@@ -518,14 +535,17 @@ while run:
         else:
             bullets.pop(bullets.index(bullet))
 
+        for enemy in Enemies:
+            enemy.checkCollision(bullet, Enemies)
+
     # Acts on each platform in the Platforms list
     for platform in Platforms:
         # Checks the collision for each player
         for player in Players:
-            player.checkCollision(platform)
+            player.checkCollision(platform, Players)
         # Checks the collision for each enemy
         for enemy in Enemies:
-            enemy.checkCollision(platform)
+            enemy.checkCollision(platform, Enemies)
 
     # If the Z key is pressed, quit the game
     if keys[pygame.K_z]:
