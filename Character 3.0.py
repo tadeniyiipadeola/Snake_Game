@@ -10,8 +10,6 @@ pygame.init()
 # The Original screen width and height
 originalWidth, originalHeight = 1366, 768
 
-framesPerSecond = 30
-
 # The Desired screen width and height
 screenWidth, screenHeight = pygame.display.Info().current_w, pygame.display.Info().current_h
 
@@ -24,6 +22,7 @@ pygame.display.set_caption("This is a character game")
 
 # The clock of the game
 clock = pygame.time.Clock()
+framesPerSecond = 30  # How many frames are within a second
 
 # The music that plays in the game
 pygame.mixer_music.load("assets/music/music.mp3")
@@ -320,7 +319,7 @@ class Player(Character):
         # The player's shooting properties
         self.bullet = pBullet  # Which bullet sprite the player is using
         self.fireCount = 0  # How long each shot will take to come out
-        self.fireRate = 15  # How often the player can shoot
+        self.fireRate = framesPerSecond * 0.5  # How often the player can shoot
 
     def checkKeys(self, controlScheme):
 
@@ -383,13 +382,14 @@ class Slime(Enemy):
         nearestPlayer = players[0]
 
         for p in players:
-            if math.hypot(self.hitBox.x - nearestPlayer.hitBox.x, self.hitBox.y - p.hitBox.y) < math.hypot(self.hitBox.x - nearestPlayer.hitBox.x, self.hitBox.y - nearestPlayer.hitBox.y):
+            if math.hypot(self.hitBox.x - nearestPlayer.hitBox.x, self.hitBox.y - p.hitBox.y)\
+                    < math.hypot(self.hitBox.x - nearestPlayer.hitBox.x, self.hitBox.y - nearestPlayer.hitBox.y):
                 nearestPlayer = p
 
         if nearestPlayer.hitBox.x < self.hitBox.x:
             self.vel *= -1
-        #self.moveSpeed = nearestPlayer.hitBox.x - self.hitBox.x
-        #self.fallSpeed = nearestPlayer.hitBox.y - self.hitBox.y
+        # self.moveSpeed = nearestPlayer.hitBox.x - self.hitBox.x
+        # self.fallSpeed = nearestPlayer.hitBox.y - self.hitBox.y
 
 
 # The class all projectiles use
@@ -491,7 +491,6 @@ while run:
         Enemies[len(Enemies) - 1].spawn(Players)
         slimeSpawnCount = 0
 
-
     # Redraws the game window
     redrawGameWindow()
 
@@ -527,7 +526,6 @@ while run:
         # Checks the collision for each enemy
         for enemy in Enemies:
             enemy.checkCollision(platform)
-
 
     # If the Z key is pressed, quit the game
     if keys[pygame.K_z]:
