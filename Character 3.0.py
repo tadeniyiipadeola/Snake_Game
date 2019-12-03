@@ -218,7 +218,7 @@ class Character(pygame.sprite.Sprite):
 
     # Checks if the player's hitbox is within the other sprite's hitbox.
     # Moves the player depending on where they are
-    def checkCollision(self, other, list):
+    def checkCollision(self, other):
         # Checks if the player's hitbox is within the other hitbox
         if self.hitBox.colliderect(other.hitBox) and other.color == GREEN:
             # If the player is higher than the other hitbox and is falling, then stop them
@@ -239,7 +239,8 @@ class Character(pygame.sprite.Sprite):
                 self.x = other.hitBox.x - self.width  # Sets the player's X position to the left of the hitbox
 
         if self.hitBox.colliderect(other.hitBox) and other.color == CYAN:
-            self
+            self.vel = 0
+
     # Draws the player's sprites and updates their position
     def draw(self, game):
 
@@ -369,8 +370,8 @@ class Enemy(Character):
 
     # Checks if the player's hitbox is within the other sprite's hitbox.
     # Moves the player depending on where they are
-    def checkCollision(self, other, list):
-        super().checkCollision(other, list)
+    def checkCollision(self, other):
+        super().checkCollision(other)
 
     def draw(self, game):
         # If the enemy reaches the edge of the screen, flip it
@@ -389,7 +390,12 @@ class Enemy(Character):
 class Slime(Enemy):
     def __init__(self, x, y, sprites, width, height, vel, frameRate, *groups):
         super().__init__(x, y, sprites, width, height, vel, frameRate, *groups)
+        self.spawnSound = pygame.mixer.Sound("assets/sounds/slimeSpawn.wav")
         self.walkSound = pygame.mixer.Sound("assets/sounds/slimeWalk.wav")
+
+        self.spawnSound.set_volume(0.25)
+        self.spawnSound.play(0)
+
         self.walkSound.set_volume(0.25)
         self.walkSound.play(-1)
         self.walkSound.fadeout(500)
@@ -536,16 +542,16 @@ while run:
             bullets.pop(bullets.index(bullet))
 
         for enemy in Enemies:
-            enemy.checkCollision(bullet, Enemies)
+            enemy.checkCollision(bullet)
 
     # Acts on each platform in the Platforms list
     for platform in Platforms:
         # Checks the collision for each player
         for player in Players:
-            player.checkCollision(platform, Players)
+            player.checkCollision(platform)
         # Checks the collision for each enemy
         for enemy in Enemies:
-            enemy.checkCollision(platform, Enemies)
+            enemy.checkCollision(platform)
 
     # If the Z key is pressed, quit the game
     if keys[pygame.K_z]:
