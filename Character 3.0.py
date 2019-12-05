@@ -28,6 +28,10 @@ framesPerSecond = 30  # How many frames are within a second
 pygame.mixer_music.load("assets/music/music.mp3")
 pygame.mixer_music.play(-1)  # Plays the music infinitely
 
+# Font setup.
+smallFont = pygame.font.Font(None, 60)
+largeFont = pygame.font.Font(None, 115)
+
 # Gameplay Setup
 
 # The control scheme for player 1
@@ -63,6 +67,14 @@ CYAN = (0, 255, 255)
 
 # The color Blue, for Players
 BLUE = (0, 0, 255)
+
+# The color Black, for the text
+BLACK = (0, 0, 0)
+
+# Amount of health players  and enemies have.
+playerHealth = 100
+slimeHealth = 30
+goblinHealth = 60
 
 # Image Setup
 # Loads the background's image into the window
@@ -313,7 +325,8 @@ class Character(pygame.sprite.Sprite):
 
 # The class all players use
 class Player(Character):
-    def __init__(self, x, y, sprites, width, height, controls, pBullet, *groups):
+    def __init__(self, x, y, sprites, width, height, controls, pBullet, health,
+                 name, score=0, *groups):
         super().__init__(x, y, sprites, width, height, 6, BLUE, 4, *groups)
 
         # The player's movement properties
@@ -326,6 +339,10 @@ class Player(Character):
         self.bulletSound = pygame.mixer.Sound("assets/sounds/shoot.wav")
         self.bulletSound.set_volume(0.25)
 
+        self.health = health
+        self.name = name
+        self.score = 0
+
     def checkKeys(self, controlScheme):
 
         # If the fire count isn't equal to the fire rate, add to the fire count
@@ -337,14 +354,10 @@ class Player(Character):
             self.bulletSound.play()
             # If the player is facing right, then fire the normal bullet
             if self.facing > 0:
-                bullets.append(
-                    Projectile(round(self.x + self.width // 2 + 5), round(self.y + self.height // 2 + 5),
-                               self.bullet, bulletWidth, bulletHeight, self.facing))
+                bullets.append(Projectile(round(self.x + self.width // 2 + 5), round(self.y + self.height // 2 + 5), self.bullet, bulletWidth, bulletHeight, self.facing))
             # If the player is facing left, then flip the bullet and then fire it
             if self.facing < 0:
-                bullets.append(
-                    Projectile(round(self.x + self.width // 2 + 5), round(self.y + self.height // 2 + 5),
-                               pygame.transform.flip(self.bullet, True, False), bulletWidth, bulletHeight, self.facing))
+                bullets.append(Projectile(round(self.x - self.width // 2 + 5), round(self.y + self.height // 2 + 5), pygame.transform.flip(self.bullet, True, False), bulletWidth, bulletHeight, self.facing))
             self.fireCount = 0  # Resets the cooldown
 
         # If the up arrow key is pressed and the player is not jumping, let them jump and set the player's fall speed
@@ -365,8 +378,10 @@ class Player(Character):
 
 # The class all enemies use
 class Enemy(Character):
-    def __init__(self, x, y, sprites, width, height, vel, frameRate, *groups):
+    def __init__(self, x, y, sprites, width, height, vel, frameRate, health, *groups):
         super().__init__(x, y, sprites, width, height, vel, RED, frameRate, *groups)
+
+        self.health = health
 
     # Checks if the player's hitbox is within the other sprite's hitbox.
     # Moves the player depending on where they are
@@ -388,8 +403,9 @@ class Enemy(Character):
 
 
 class Slime(Enemy):
-    def __init__(self, x, y, sprites, width, height, vel, frameRate, *groups):
-        super().__init__(x, y, sprites, width, height, vel, frameRate, *groups)
+    def __init__(self, x, y, sprites, width, height, vel, frameRate, health, *groups):
+        super().__init__(x, y, sprites, width, height, vel, frameRate, health, *groups)
+
         self.spawnSound = pygame.mixer.Sound("assets/sounds/slimeSpawn.wav")
         self.walkSound = pygame.mixer.Sound("assets/sounds/slimeWalk.wav")
 
@@ -399,6 +415,8 @@ class Slime(Enemy):
         self.walkSound.set_volume(0.25)
         self.walkSound.play(-1)
         self.walkSound.fadeout(500)
+
+        self.health = health
 
     def spawn(self, players):
         nearestPlayer = players[0]
@@ -454,22 +472,35 @@ for platform in platformPosition:
     Platforms.append(Platform(platform[0], platform[1], platformWidth, platformHeight, platformSprites, platform[2]))
 Platforms.append(ground)
 
-bullets = []  # Contains all of the projectiles on the screen
+bullets1 = []  # Contains all bullets shot by player 1
+
+bullets2 = []  # Contains all bullets shot by player 2
+
+bullets = []
 
 # Creates the characters for the players
-player1 = Player(50, 200, p1Sprites, playerWidth, playerHeight, p1Controls, p1Bullet)
-player2 = Player(100, 200, p2Sprites, playerWidth, playerHeight, p2Controls, p2Bullet)
+player1 = Player(100, 200, p1Sprites, playerWidth, playerHeight, p1Controls,
+                 p1Bullet, playerHealth, "Ricky")
+player2 = Player(1000, 400, p2Sprites, playerWidth, playerHeight, p2Controls,
+                 p2Bullet, playerHealth, "Bobby")
 
 Players = [player1, player2]  # Contains all of the players in the game
 
-goblin = Enemy(50, 200, goblinSprites, goblinWidth, goblinHeight, 4, 3)  # Creates a goblin
+goblin = Enemy(50, 200, goblinSprites, goblinWidth, goblinHeight, 4, 3,
+               goblinHealth)  # Creates a goblin
 
-slime = Slime(100, 200, slimeSprites, slimeWidth, slimeHeight, 2, 6)
+slime = Slime(100, 200, slimeSprites, slimeWidth, slimeHeight, 2, 6,
+              slimeHealth)
 
 Enemies = [goblin, slime]  # Contains all of the enemies in the game
 # A list of all the sprites in the game
 all_sprites = pygame.sprite.Group()
 
+# Position of text on screen
+player1ScoreLocation = (0, 0)
+player1HealthLocation = (0, 50)
+player2ScoreLocation = (screenWidth - 410, 0)
+player2HealthLocation = (screenWidth - 410, 50)
 
 # Method Setup
 # Redraws the window with the background and sprites
@@ -493,6 +524,17 @@ def redrawGameWindow():
     for b in bullets:
         b.draw(win)
 
+    # Draws text to screen
+    win.blit(smallFont.render(f'{player1.name}\'s Health: {player1.health}', True, BLACK),
+             player1HealthLocation)
+    win.blit(smallFont.render(f'{player1.name}\'s Score: {player1.score}', True, BLACK),
+             player1ScoreLocation)
+
+    win.blit(smallFont.render(f'{player2.name}\'s Health: {player2.health}', True, BLACK),
+             player2HealthLocation)
+    win.blit(smallFont.render(f'{player2.name}\'s Score: {player2.score}', True, BLACK),
+             player2ScoreLocation)
+
     # Updates the screen with all of the sprites
     pygame.display.update()
 
@@ -510,7 +552,8 @@ while run:
         slimeSpawnCount += 1
 
     if slimeSpawnCount == slimeSpawnTime:
-        Enemies.append(Slime(random.randint(0, screenWidth), 0, slimeSprites, slimeWidth, slimeHeight, 2, 3))
+        Enemies.append(Slime(random.randint(0, screenWidth), 0, slimeSprites,
+                             slimeWidth, slimeHeight, 2, 3, slimeHealth))
         # Enemies[len(Enemies) - 1].spawn(Players)
         slimeSpawnCount = 0
 
@@ -521,9 +564,30 @@ while run:
 
     keys = pygame.key.get_pressed()  # Keeps track of any and all keys that have been pressed
 
-    # Allows each player to check if any of their keys are being pressed
+
     for player in Players:
+        for bullet in bullets:
+            if player.hitBox.colliderect(bullet.hitBox):
+                player.health -= 10
+                bullets.pop(bullets.index(bullet))
+                if player.health == 0:
+                    player.x, player.y = random.randrange(0, screenWidth), random.randrange(0, screenHeight)
+                    player.health = 100
+                    if player.name == "ricky":
+                        player2.score += 10
+                    else:
+                        player1.score += 10
+
         player.checkKeys(keys)
+
+
+    for enemy in Enemies:
+        for bullet in bullets:
+            if enemy.hitBox.colliderect(bullet.hitBox):
+                enemy.health -= 10
+                bullets.pop(bullets.index(bullet))
+                if enemy.health == 0:
+                    Enemies.pop(Enemies.index(enemy))
 
     # Keeps track of every event that occurs in the game
     for event in pygame.event.get():
