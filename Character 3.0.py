@@ -17,7 +17,7 @@ screenWidth, screenHeight = pygame.display.Info().current_w, pygame.display.Info
 scaleX, scaleY = screenWidth / originalWidth, screenHeight / originalHeight
 
 # Sets up the window to display the game
-win = pygame.display.set_mode((screenWidth, screenHeight))
+win = pygame.display.set_mode((screenWidth, screenHeight), pygame.FULLSCREEN)
 pygame.display.set_caption("This is a character game")
 
 # The clock of the game
@@ -33,7 +33,6 @@ smallFont = pygame.font.Font(None, 60)
 largeFont = pygame.font.Font(None, 115)
 
 # Gameplay Setup
-
 # The control scheme for player 1
 p1Controls = [pygame.K_SPACE, pygame.K_UP, pygame.K_LEFT, pygame.K_RIGHT]  # (Space, Jump, Left, Right)
 
@@ -335,7 +334,7 @@ class Player(Character):
         # The player's shooting properties
         self.bullet = pBullet  # Which bullet sprite the player is using
         self.fireCount = 0  # How long each shot will take to come out
-        self.fireRate = framesPerSecond * 0.5  # How often the player can shoot
+        self.fireRate = round(framesPerSecond * 0.5)  # How often the player can shoot
         self.bulletSound = pygame.mixer.Sound("assets/sounds/shoot.wav")
         self.bulletSound.set_volume(0.25)
 
@@ -409,10 +408,10 @@ class Slime(Enemy):
         self.spawnSound = pygame.mixer.Sound("assets/sounds/slimeSpawn.wav")
         self.walkSound = pygame.mixer.Sound("assets/sounds/slimeWalk.wav")
 
-        self.spawnSound.set_volume(0.25)
+        self.spawnSound.set_volume(0.5)
         self.spawnSound.play(0)
 
-        self.walkSound.set_volume(0.25)
+        self.walkSound.set_volume(0.75)
         self.walkSound.play(-1)
         self.walkSound.fadeout(500)
 
