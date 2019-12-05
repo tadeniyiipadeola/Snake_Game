@@ -17,7 +17,7 @@ screenWidth, screenHeight = pygame.display.Info().current_w, pygame.display.Info
 scaleX, scaleY = screenWidth / originalWidth, screenHeight / originalHeight
 
 # Sets up the window to display the game
-win = pygame.display.set_mode((screenWidth, screenHeight))
+win = pygame.display.set_mode((screenWidth, screenHeight), pygame.FULLSCREEN)
 pygame.display.set_caption("This is a character game")
 
 # The clock of the game
@@ -29,6 +29,15 @@ pygame.mixer_music.load("assets/music/music.mp3")
 pygame.mixer_music.play(-1)  # Plays the music infinitely
 
 # Gameplay Setup
+
+pygame.joystick.init()
+joysticks = [pygame.joystick.Joystick(x) for x in range(pygame.joystick.get_count())]
+
+# p1 = joysticks[0]
+# p1.init();
+# p1LR = p1.get_axis(0);
+# p1UD = p1.get_axis(1);
+# p2 = joysticks[1]
 
 # The control scheme for player 1
 p1Controls = [pygame.K_SPACE, pygame.K_UP, pygame.K_LEFT, pygame.K_RIGHT]  # (Space, Jump, Left, Right)
@@ -159,6 +168,22 @@ for root, dirs, files in os.walk("assets/sprites/enemies/slimes/red", topdown=Fa
 
 
 # Class Setup
+
+# The class all player controls use
+class Controllers(object):
+    def __init__(self, controller):
+        self.controller = controller
+        self.xAxis = controller.get_axis(0)
+        self.yAxis = controller.get_axis(1)
+        self.aButton = controller.get_button(0)
+        self.bButton = controller.get_button(1)
+
+    def update(self):
+        self.xAxis = self.controller.get_axis(0)
+        self.yAxis = self.controller.get_axis(1)
+        self.aButton = self.controller.get_button(0)
+        self.bButton = self.controller.get_button(1)
+
 # The class all kinds of platforms use
 class Platform(object):
     def __init__(self, x, y, width, height, sprites, length=0):
@@ -505,7 +530,7 @@ slimeSpawnTime = framesPerSecond * 3
 
 # The loop that runs the game
 while run:
-
+    # print(p1.get_axis(0));
     if slimeSpawnCount != slimeSpawnTime:
         slimeSpawnCount += 1
 
